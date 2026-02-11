@@ -1,0 +1,14 @@
+{
+  "font": {
+    "size": 14,
+    "family": "JetBrains Mono"
+  },
+  "window": {
+    "opacity": 0.95,
+    "padding": 8
+  },
+  "colors": {
+    "background": "#1e1e2e",
+    "foreground": "#cdd6f4"
+  }
+}

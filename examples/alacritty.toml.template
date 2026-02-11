@@ -1,0 +1,21 @@
+# {% generated %}
+
+[font]
+size = {{ font.size }}
+
+[font.normal]
+family = "{{ font.family }}"
+
+[window]
+opacity = {{ window.opacity }}
+
+[window.padding]
+x = {{ window.padding }}
+y = {{ window.padding }}
+
+[shell]
+program = "{% env SHELL %}"
+
+[colors.primary]
+background = "{{ colors.background }}"
+foreground = "{{ colors.foreground }}"

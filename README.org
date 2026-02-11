@@ -1,0 +1,313 @@
+* Isogeny
+
+Built around Yogthos's [[https://github.com/yogthos/Selmer][Selmer]], Isogeny is named for the [[https://en.wikipedia.org/wiki/Selmer_group][Selmer group]], '/constructed from an [[https://en.wikipedia.org/wiki/Isogeny][isogeny]] of [[https://en.wikipedia.org/wiki/Abelian_variety][abelian varieties]]/'.
+
+It is easy to do machine-specific configuration for programs like Emacs whose configuration files are written in Turing-complete languages. The same cannot be said for the multitude of programs whose configuration is written in simple data formats: /[[https://en.wikipedia.org/wiki/TOML][toml]]/, /json/, /yaml/, and many others.
+
+/Isogeny/ allows you to make all configuration dynamic.
+
+** Prerequisites
+It is a Clojure script which requires [[https://github.com/babashka/babashka#installation][Babashka]]^{[[https://aur.archlinux.org/packages/babashka-bin/][AUR]]} to run, and as long as Babashka is installed, Isogeny can be treated as a simple executable. It has been built for Linux, should run on MacOS, and I have no idea about Windows or WSL.
+
+** Installation
+Clone the repository:
+#+begin_src sh
+git clone https://github.com/dcprevere/isogeny.git
+cd isogeny
+chmod +x isogeny # check the source
+#+end_src
+
+One can easily execute Isogeny by creating a symbolic link in a directory which is on the PATH:
+#+begin_src sh
+ln -s <path-to-isogeny>/isogeny ~/bin/isogeny
+#+end_src
+
+** Getting started
+Isogeny uses a template and a context file to generate an output.
+
+For help creating these files see [[*Prepare]].
+
+*** Templates
+Isogeny uses the [[https://github.com/yogthos/Selmer][Selmer]] templating system. To use it, replace anything you wish to be dynamic with ~{{ variable }}~. The context is an [[https://github.com/edn-format/edn][EDN]] file that contains the values for a particular machine, like ~{:variable "value"}~, and generally there will be one per config file per machine.
+
+For more information about creating templates, see the comprehensive [[https://github.com/yogthos/Selmer][Selmer documentation]].
+
+#+begin_src
+...
+Font size: {{ font.size }}
+Font family: {{ font.family }}
+Ports: {% for port in ports %}
+  Port: {{ port }} {% endfor %}
+...
+#+end_src
+
+*** Context
+A context is a data file that provides the values to be used in the template. It supports both [[https://github.com/edn-format/edn][EDN]] and JSON.
+
+#+begin_src clojure
+{:font {:size 12
+        :family "Fira mono"}
+ :ports [3334 3335]}
+#+end_src
+
+#+begin_src json
+{
+  "font" : {
+    "size" : 12,
+    "family" : "Fira mono"
+  },
+  "ports" : [ 3334, 3335 ]
+}
+#+end_src
+
+Generally, a context will need to be created for each machine or user that Isogeny will generate the configuration for, with the contexts named in a way that Isogeny can pick the correct one to generate the correct output. The specific context can be dynamically loaded from a shell like so:
+
+#+begin_src sh
+config.$(uname).$(uname -n).edn
+# => config.Linux.hermes.edn
+# => config.Darwin.simon.edn
+#+end_src
+
+*** Output
+The generated file is placed where it can then be naïvely used by its programme.
+
+#+begin_src
+...
+Font size: 12
+Font family: Fira mono
+Ports:
+  Port: 3334
+  Port: 3335
+...
+#+end_src
+
+*** Examples
+Example files can be found in the file:examples/ directory. The examples use an Alacritty terminal configuration to demonstrate machine-specific templating.
+#+begin_src sh
+isogeny render \
+    -t ./examples/alacritty.toml.template \
+    -c ./examples/alacritty.toml.desktop.edn \
+    -a ./examples/custom-tag.clj \
+    -o ./examples/alacritty.toml
+#+end_src
+
+*** How I use it
+Isogeny has been designed to be called on startup when the login shell sources =~/.bash_profile=, =~/.profile=, or =~/.zprofile=, but can also be called from any shell.
+#+begin_src sh
+isogeny -t ~/.config/example/config.template \
+    -c ~/.config/example/config.$(uname -n).edn \
+    -o ~/.config/example/config
+#+end_src
+
+From my own dotfiles:
+
+#+begin_src sh
+isogeny \
+    -t $DOT/sway/.config/sway/config.template \
+    -c $DOT/sway/.config/sway/config.$(uname -n).edn \
+    -d $DOT/sway/.config/sway/config.default.edn \
+    -o $DOT/sway/.config/sway/config \
+    --strict --verbose
+
+isogeny \
+    -t $DOT/alacritty/.config/alacritty/alacritty.yml.template \
+    -c $DOT/alacritty/.config/alacritty/alacritty.yml.$(uname -n).edn \
+    -d $DOT/alacritty/.config/alacritty/alacritty.yml.default.edn \
+    -o $DOT/alacritty/.config/alacritty/alacritty.yml \
+    --strict --verbose
+#+end_src
+
+I use this in concert with [[https://www.gnu.org/software/stow/][GNU Stow]] to deploy the output file to the correct location.
+
+** Advanced usage
+
+*** Help
+#+begin_src
+isogeny --help
+USAGE: isogeny render -t TEMPLATE -c CONTEXT -o OUTPUT
+       isogeny prepare CONFIG_FILE
+       isogeny deploy [STOW_ARGS]
+TEMPLATE: Selmer template
+CONTEXT: EDN context map
+OUTPUT: output location
+
+General options:
+  -h, --help     Display usage information.
+  -V, --version  Print the version of Isogeny.
+  -v, --verbose  Print execution details.
+      --strict   Throw an exception for missing values.
+      --safe     Do not alter existing files.
+      --dry-run  Run without writing anything.
+
+Render options:
+  -t, --template TEMPLATE        []  Templates to be rendered.
+  -c, --context CONTEXT          -   EDN context used to render template.
+  -d, --context-default CONTEXT      Default EDN context to fall back on.
+  -C, --context-override STRING      Provide context override.
+  -j, --json                         Parse JSON context.
+  -a, --add-tags TAGS_FILE           File containing additional tag definitions.
+      --deep-merge                   Deep-merge the context override.
+  -o, --output OUTPUT            []  Locations for output.
+      --standard                     Assume outputs to be template minus extension.
+      --eval                         Allow #=() reader macros in EDN contexts.
+
+Deploy options:
+      --deploy-dir DIR  The root dir of config files, --dir or -d in GNU Stow.
+#+end_src
+
+*** ~STDIN~ and ~STDOUT~
+To read from ~STDIN~,  ~-~ can be used as the template or context. The same can be done for ~STDDOUT~ for the output, or it can simply be omitted.
+
+#+begin_src sh
+isogeny -t - -c ~/.config/example/config.$(uname -n).edn
+#+end_src
+
+*** Standard mode
+Isogeny, in standard mode, will ignore any outputs provided, and instead output the rendered file to the path of the template, minus its extension.
+#+begin_src sh
+isogeny -t ./examples/alacritty.toml.template \ # the .template extension will be removed
+    -c ./examples/alacritty.toml.desktop.edn \
+    -a ./examples/custom-tag.clj \
+    --standard # the output will be ./examples/alacritty.toml
+#+end_src
+
+*** Default contexts
+It is always a good idea to have a /default/ context that can be fallen back on in the case that the specific context cannot be found.
+#+begin_src sh
+isogeny -t ./examples/alacritty.toml.template \
+    -c "./examples/alacritty.toml.$(hostname).edn" \ # this file doesn\'t exist
+    -d ./examples/alacritty.toml.default.edn \ # so this context is used instead
+    -a ./examples/custom-tag.clj \
+    -o ./examples/alacritty.toml
+#+end_src
+
+*** JSON context
+The context, default, and override may be provided as JSON:
+#+begin_src sh
+isogeny -t ./examples/alacritty.toml.template \
+    -c ./examples/alacritty.toml.desktop.json \
+    -a ./examples/custom-tag.clj \
+    -o ./examples/alacritty.toml \
+    --json
+#+end_src
+
+*** Environment variables
+Isogeny provides two means of rendering the values of environment variables in templates, a custom ~env~ tag used in the template like ~{% env "PATH" %}~, or in the config ~{:path #=(java.lang.System/getenv "PATH")}~ (requires ~--eval~).
+
+*** Executing code
+When using an EDN context and the ~--eval~ flag, Clojure's ~#=()~ reader macro can be used to execute code at read time:
+
+#+begin_src clojure
+{:font-size #=(* 16 2)
+ :user #=(java.lang.System/getenv "USER")}
+#+end_src
+
+Without ~--eval~, contexts are pure data and ~#=()~ will throw an exception. Classes must be fully qualified (e.g. ~java.lang.System~, not ~System~).
+
+*** Nested values
+Values that are nested within the context can easily be used in the template using the common ~foo.bar~ syntax.
+#+begin_src
+{{ foo.bar }}
+{:foo {:bar "qux"}}
+=> "qux"
+#+end_src
+
+*** Multi-template mode
+Isogeny can render multiple templates at once. The context file must contain the context needed for every template. The order of templates must match the order of outputs.
+#+begin_src sh
+isogeny -c ./examples/alacritty.toml.desktop.edn \
+    -t ./examples/alacritty.toml.template \
+    -o ./examples/alacritty.toml \
+    -t ./examples/colors.css.template \
+    -o ./examples/colors.css \
+    -a ./examples/custom-tag.clj
+#+end_src
+
+*** Context overrides
+Values in the context file can be overridden on the command line.
+#+begin_src sh
+isogeny -t ./examples/alacritty.toml.template \
+    -c ./examples/alacritty.toml.desktop.edn \
+    -a ./examples/custom-tag.clj \
+    -C '{:font {:size 18}}' \
+    -o ./examples/alacritty.toml
+#+end_src
+
+**** Deep merge
+By default, the context override uses a shallow merge.
+#+begin_src clojure
+(merge {:font {:size 14 :family "JetBrains Mono"}}
+       {:font {:size 18}})
+; => {:font {:size 18}}
+#+end_src
+
+By passing ~--deep-merge~, the maps are recursively merged instead.
+#+begin_src clojure
+(dcprevere.isogeny/deep-merge
+ {:font {:size 14 :family "JetBrains Mono"}}
+ {:font {:size 18}})
+; => {:font {:size 18 :family "JetBrains Mono"}}
+#+end_src
+
+#+begin_src sh
+isogeny -t ./examples/alacritty.toml.template \
+    -c ./examples/alacritty.toml.desktop.edn \
+    -a ./examples/custom-tag.clj \
+    -C '{:font {:size 18}}' \
+    --deep-merge \
+    -o ./examples/alacritty.toml
+#+end_src
+
+*** Additional Selmer tags
+As well as variables, Selmer contains a number of tags, such as ~includes~, ~extends~, ~for~, and ~if~. Isogeny provides ~env~, and allows one to define additional tags by providing a file of tag definitions; see file:examples/custom-tag.clj and [[https://github.com/yogthos/Selmer#tags][Selmer#Tags]] for examples.
+#+begin_src sh
+isogeny -t ./examples/alacritty.toml.template \
+    -c ./examples/alacritty.toml.desktop.edn \
+    -a ./examples/custom-tag.clj \
+    -o ./examples/alacritty.toml
+#+end_src
+
+*** Safe
+By passing the option ~--safe~, Isogeny won't (I hope) overwrite any extant files. It is not a default because in the expected use case Isogeny will be overwriting extant configuration files.
+
+*** Strict
+By default, Isogeny will ignore when the template contains variables that are not defined in the context. To make it throw exceptions, it is recommended to use ~--strict~.
+
+*** Dry-run
+To check that Isogeny will run without throwing exceptions, ~--dry-run~ can be passed so it will run without writing anything.
+
+*** It's fast
+It's fast (~30ms):
+#+begin_src sh
+isogeny -t  -c  -d  -o   \
+    0.01s user 0.02s system 99% cpu 0.032 total
+#+end_src
+
+** Prepare
+Isogeny actually supports three subcommands: ~render~, ~prepare~ and ~deploy~. Everything we have seen to now used ~render~ as it is the default. ~prepare~ helps one get started by creating the template and context files for a configuration file /without changing the original/.
+
+#+begin_src sh
+isogeny prepare alacritty.yml .vimrc
+# => alacritty.yml.template, alacritty.yml.$HOST.edn
+# => .vimrc.template, .vimrc.$HOST.edn
+#+end_src
+
+The template files will be identical to the original configuration file, and the context files will be empty, but they provide you with files that you can start editing to use with Isogeny.
+
+*** Writing templates
+Variables: ~{{ variable }}~
+
+Tags: ~{% tag %}~
+
+Example tags: ~include~ , ~block~, ~cycle~, ~debug~, ~extends~, ~if~ / ~else~ / ~endif~, ~ifequal~, ~ifunequal~, ~for~ / ~endfor~, ~sum~, ~now~, ~comment~, ~firstof~, ~safe~, ~script~, ~style~, ~verbatim~, ~with~
+
+** Deploy
+Isogeny also provides a thin wrapper around GNU Stow, allowing one to easily deploy the generated files. To see how to organise ones file to use Isogeny deploy and Stow, see its [[https://www.gnu.org/software/stow/manual/html_node/index.html][documentation]]. Having done so, and having ~stow~ available on the system:
+#+begin_src sh
+isogeny deploy --deploy-dir ~/.dotfiles alacritty clojure emacs
+#+end_src
+
+This can be used after rendering the configuration, to ensure that the rendered configuration is actually used by the system.
+
+** Acknowledgements
+Isogeny is deeply indebted to the works of [[https://github.com/babashka/babashka][Babashka]] and [[https://github.com/yogthos/Selmer][Selmer]].
