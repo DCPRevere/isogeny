@@ -2,16 +2,14 @@
 ;; -*- mode: clojure -*-
 
 (require '[babashka.classpath :as cp]
-         '[babashka.fs :as fs]
-         '[clojure.java.shell :as shell])
+         '[babashka.fs :as fs])
 
-(as-> *file* $
-  (shell/sh "readlink" "-f" $)
-  (:out $)
-  (fs/parent $)
-  (fs/file $ "src")
-  (str $)
-  (cp/add-classpath $))
+(-> *file*
+    fs/real-path
+    fs/parent
+    (fs/file "src")
+    str
+    cp/add-classpath)
 
 (require '[dcprevere.isogeny :as iso])
 (apply iso/-main *command-line-args*)

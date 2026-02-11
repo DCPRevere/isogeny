@@ -84,17 +84,6 @@ isogeny -t config.template \
     -o config
 ```
 
-### Code execution
-
-With the `--eval` flag, EDN contexts can contain `#=()` reader macros:
-
-```clojure
-{:user #=(java.lang.System/getenv "USER")
- :columns #=(* 80 2)}
-```
-
-Without `--eval`, `#=()` throws an exception. Classes must be fully qualified.
-
 ## Templates
 
 Templates use [Selmer](https://github.com/yogthos/Selmer) syntax.
@@ -103,7 +92,7 @@ Variables: `{{ variable }}`, `{{ nested.key }}`
 
 Tags: `{% if condition %}`, `{% for x in items %}`, `{% env VARNAME %}`
 
-Custom tags can be loaded from a Clojure file with `-a`:
+Custom tags can be loaded from a Clojure file with `-a` (not available in native binary):
 
 ```sh
 isogeny -t config.template -c config.edn -a tags.clj -o config
@@ -117,7 +106,7 @@ isogeny -t config.template -c config.edn -a tags.clj -o config
 | `--strict` | Throw on missing template variables |
 | `--safe` | Do not overwrite existing files |
 | `--dry-run` | Run without writing output |
-| `--eval` | Allow `#=()` reader macros in EDN contexts |
+
 | `--deep-merge` | Recursively merge context overrides |
 | `--json` | Parse context as JSON instead of EDN |
 | `--verbose` | Print execution details |
@@ -131,3 +120,25 @@ isogeny -c shared-context.edn \
     -t alacritty.toml.template -o alacritty.toml \
     -t colors.css.template -o colors.css
 ```
+
+## Building
+
+Three distribution options:
+
+| Method | Command | Runtime dependency |
+|---|---|---|
+| Babashka script | `./isogeny` | [Babashka](https://github.com/babashka/babashka) |
+| JVM uberjar | `java -jar target/isogeny-4.0.0.jar` | JVM |
+| Native binary | `./isogeny-native` | None |
+
+Build the uberjar:
+```sh
+make uberjar
+```
+
+Build the native binary (requires [GraalVM](https://www.graalvm.org/) with `native-image`):
+```sh
+make native
+```
+
+The native binary supports all features except `--add-tags` (custom Selmer tags from Clojure files).

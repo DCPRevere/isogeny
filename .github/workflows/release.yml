@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build-native:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '21'
+          components: native-image
+
+      - uses: DeLaGuardo/setup-clojure@13.2
+        with:
+          cli: latest
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.gitlibs
+          key: deps-${{ hashFiles('deps.edn') }}
+          restore-keys: deps-
+
+      - name: Run tests
+        run: clojure -X:test
+
+      - name: Build uberjar
+        run: clojure -T:build ci
+
+      - name: Build native binary
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          native-image \
+            --features=clj_easy.graal_build_time.InitClojureClasses \
+            --initialize-at-build-time=com.fasterxml.jackson \
+            --no-fallback \
+            -H:ConfigurationFileDirectories=graalvm/ \
+            -jar "target/isogeny-${VERSION}.jar" \
+            -o isogeny-native
+
+      - name: Rename binary
+        run: mv isogeny-native isogeny-linux-amd64
+
+      - name: Stamp PKGBUILD
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          SHA=$(sha256sum isogeny-linux-amd64 | cut -d' ' -f1)
+          sed -i \
+            -e "s/@@VERSION@@/$VER/g" \
+            -e "s/@@SHA256_LINUX_AMD64@@/$SHA/g" \
+            packaging/aur/PKGBUILD
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            isogeny-linux-amd64
+            target/isogeny-*.jar
+            packaging/aur/PKGBUILD
+
+      - name: Publish to AUR
+        if: env.AUR_SSH_KEY != ''
+        continue-on-error: true
+        uses: KSXGitHub/github-actions-deploy-aur@v3
+        with:
+          pkgname: isogeny-bin
+          pkgbuild: packaging/aur/PKGBUILD
+          commit_username: github-actions[bot]
+          commit_email: github-actions[bot]@users.noreply.github.com
+          ssh_private_key: ${{ secrets.AUR_SSH_KEY }}
+          commit_message: "Update to ${{ github.ref_name }}"
+        env:
+          AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}

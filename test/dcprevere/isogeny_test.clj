@@ -172,28 +172,6 @@
           expected [{::sut/file output ::sut/content "one two three"}]
           actual (sut/render templates context context-default options)]
       (t/is (= expected actual))))
-  (t/testing "Reader eval macros are executed when eval? is true."
-    (let [templates ["{{foo}}\n{{bar}}"]
-          context "{:foo #=(+ 1 2) :bar \"baz\"}"
-          context-default nil
-          output "output.txt"
-          options {::sut/outputs [output] ::sut/eval? true}
-          expected [{::sut/file output ::sut/content "3\nbaz"}]
-          actual (sut/render templates context context-default options)]
-      (t/is (= expected actual))))
-  (t/testing "Reader eval macros throw when eval? is false."
-    (t/is (thrown? Exception
-                   (sut/render ["{{foo}}"]
-                               "{:foo #=(+ 1 2)}"
-                               nil
-                               {::sut/outputs ["out"]}))))
-  (t/testing "Bare forms are treated as data without eval."
-    (let [templates ["{{foo}}"]
-          context (str {:foo '(+ 1 2)})
-          output "output.txt"
-          options {::sut/outputs [output]}
-          result (sut/render templates context nil options)]
-      (t/is (= "(+ 1 2)" (::sut/content (first result))))))
   (t/testing "Standard option will override outputs."
     (let [template-files ["output.template"]
           templates ["{{foo}}"]
@@ -825,38 +803,6 @@
         (finally
           (delete-quietly ctx))))))
 
-;; ---- render! integration: Clojure eval in context ----
-
-(t/deftest render!-eval-context-test
-  (t/testing "Reader eval macros in EDN context are executed with --eval."
-    (let [tpl (tmp-file ".template")
-          ctx (tmp-file ".edn")
-          out (tmp-file ".txt")]
-      (try
-        (spit tpl "{{x}}")
-        (spit ctx "{:x #=(+ 10 20)}")
-        (sut/render! nil {::sut/template-files [tpl]
-                          ::sut/context-file ctx
-                          ::sut/outputs [out]
-                          ::sut/eval? true})
-        (t/is (= "30" (slurp out)))
-        (finally
-          (delete-quietly tpl)
-          (delete-quietly ctx)
-          (delete-quietly out)))))
-  (t/testing "Reader eval macros in EDN context throw without --eval."
-    (let [tpl (tmp-file ".template")
-          ctx (tmp-file ".edn")]
-      (try
-        (spit tpl "{{x}}")
-        (spit ctx "{:x #=(+ 10 20)}")
-        (t/is (thrown? Exception
-                       (sut/render! nil {::sut/template-files [tpl]
-                                         ::sut/context-file ctx
-                                         ::sut/outputs [(tmp-file ".txt")]})))
-        (finally
-          (delete-quietly tpl)
-          (delete-quietly ctx))))))
 
 ;; ---- render! integration: env tag in template ----
 

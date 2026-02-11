@@ -1,0 +1,20 @@
+[
+  {
+    "name": "com.fasterxml.jackson.core.JsonFactory",
+    "allPublicConstructors": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "com.fasterxml.jackson.core.JsonGenerator",
+    "allPublicMethods": true
+  },
+  {
+    "name": "com.fasterxml.jackson.core.JsonParser",
+    "allPublicMethods": true
+  },
+  {
+    "name": "com.fasterxml.jackson.databind.ObjectMapper",
+    "allPublicConstructors": true,
+    "allPublicMethods": true
+  }
+]

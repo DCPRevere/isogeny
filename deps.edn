@@ -1,20 +1,19 @@
 {:paths ["src" "resources"]
  :deps {babashka/fs {:mvn/version "0.1.2"}
-        cider/cider-nrepl {:mvn/version "0.27.2"}
+        com.github.clj-easy/graal-build-time {:mvn/version "1.0.5"}
         org.clojure/clojure {:mvn/version "1.10.3"}
         org.clojure/tools.cli {:mvn/version "1.0.206"}
         org.clojure/tools.logging {:mvn/version "1.2.4"}
-        refactor-nrepl/refactor-nrepl {:mvn/version "2.5.1"}
         selmer/selmer {:mvn/version "1.12.49"}
         cheshire/cheshire {:mvn/version "5.10.1"}}
  :aliases
  {:run-m {:main-opts ["-m" "dcprevere.isogeny"]}
   :run-x {:ns-default dcprevere.isogeny
           :exec-fn -main}
+  :dev {:extra-deps {cider/cider-nrepl {:mvn/version "0.27.2"}
+                     refactor-nrepl/refactor-nrepl {:mvn/version "2.5.1"}}}
   :build {:deps {io.github.seancorfield/build-clj
                  {:git/tag "v0.6.3" :git/sha "9b8e09b"
-                  ;; since we're building an app uberjar, we do not
-                  ;; need deps-deploy for clojars.org deployment:
                   :deps/root "slim"}}
           :ns-default build}
   :test {:extra-paths ["test"]

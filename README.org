@@ -22,6 +22,14 @@ One can easily execute Isogeny by creating a symbolic link in a directory which 
 ln -s <path-to-isogeny>/isogeny ~/bin/isogeny
 #+end_src
 
+*** Native binary
+A standalone native binary can be built with [[https://www.graalvm.org/][GraalVM]] ~native-image~, removing the need for Babashka or the JVM at runtime:
+#+begin_src sh
+make native
+#+end_src
+
+This requires GraalVM with the ~native-image~ component installed. The ~--add-tags~ option is not available in the native binary.
+
 ** Getting started
 Isogeny uses a template and a context file to generate an output.
 
@@ -149,7 +157,6 @@ Render options:
       --deep-merge                   Deep-merge the context override.
   -o, --output OUTPUT            []  Locations for output.
       --standard                     Assume outputs to be template minus extension.
-      --eval                         Allow #=() reader macros in EDN contexts.
 
 Deploy options:
       --deploy-dir DIR  The root dir of config files, --dir or -d in GNU Stow.
@@ -192,17 +199,7 @@ isogeny -t ./examples/alacritty.toml.template \
 #+end_src
 
 *** Environment variables
-Isogeny provides two means of rendering the values of environment variables in templates, a custom ~env~ tag used in the template like ~{% env "PATH" %}~, or in the config ~{:path #=(java.lang.System/getenv "PATH")}~ (requires ~--eval~).
-
-*** Executing code
-When using an EDN context and the ~--eval~ flag, Clojure's ~#=()~ reader macro can be used to execute code at read time:
-
-#+begin_src clojure
-{:font-size #=(* 16 2)
- :user #=(java.lang.System/getenv "USER")}
-#+end_src
-
-Without ~--eval~, contexts are pure data and ~#=()~ will throw an exception. Classes must be fully qualified (e.g. ~java.lang.System~, not ~System~).
+Isogeny provides a custom ~env~ tag for rendering environment variables in templates: ~{% env "PATH" %}~.
 
 *** Nested values
 Values that are nested within the context can easily be used in the template using the common ~foo.bar~ syntax.

@@ -1,0 +1,16 @@
+# Maintainer: dcprevere
+pkgname=isogeny-bin
+pkgver=@@VERSION@@
+pkgrel=1
+pkgdesc='Template rendering and deployment CLI powered by Selmer'
+arch=('x86_64')
+url='https://github.com/dcprevere/isogeny'
+license=('LicenseRef-proprietary')
+provides=('isogeny')
+conflicts=('isogeny')
+source=("${pkgname}-${pkgver}::${url}/releases/download/v${pkgver}/isogeny-linux-amd64")
+sha256sums=('@@SHA256_LINUX_AMD64@@')
+
+package() {
+    install -Dm755 "${srcdir}/${pkgname}-${pkgver}" "${pkgdir}/usr/bin/isogeny"
+}
